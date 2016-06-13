@@ -4,14 +4,13 @@ function getRandomInt(min, max) {
 }
 
 // Sutherland-Style Relaxation
-function Relax() {
+export default function Relax() {
   var self = this;
 
   this.vars = {};
   this.constraints = [];
   this.shouldRelax = false;
 }
-export default Relax;
 
 Relax.prototype.epsilon = 0.01;
 Relax.prototype.tinyDelta = 0.00001;
@@ -186,13 +185,13 @@ Relax.prototype.iterateForUpTo = function(tMillis) {
   return count;
 };
 
-function RelaxNode(expr, vars, solver) {
+export function RelaxNode(expr, vars, solver) {
     this.expr = expr;
     this.vars = vars;
     this.errorFn = new Function('vars', 'return ' + this.expr);
     this.solver = solver;
 }
-export default RelaxNode;
+
 
 // Automatic solver selection interface
 Relax.prototype.solverName = "Sutherland's Relaxation";
@@ -203,37 +202,6 @@ Relax.prototype.supportedDataTypes = function() {
     // used scenarios where js-coercion from string to float is used - these
     // cases would be blown
     return ['number', 'string'];
-};
-
-// Babelsberg required interface
-// addConstraint, removeConstraint
-
-Relax.prototype.always = function(opts, func) {
-    if (opts.priority) {
-        throw 'soft constraints not implemented for relax';
-    }
-    func.varMapping = opts.ctx;
-    var constraint = new Constraint(func, this);
-    this.addConstraint(constraint.constraintobjects[0]);
-    //this.solve();
-    return constraint;
-};
-
-Relax.prototype.constraintVariableFor = function(value, ivarname) {
-    if ((typeof(value) == 'number') ||
-            (value === null) ||
-            (value instanceof Number)) {
-        var name = ivarname + ':' + Strings.newUUID();
-        var v = new RelaxNode('vars[\"' + name + '\"]', [name], this);
-        this.addVar(name, value);
-        return v;
-    } else {
-        return null;
-    }
-};
-
-Relax.prototype.isConstraintObject = function() {
-    return true;
 };
 
 Relax.prototype.solve = function() {
@@ -280,7 +248,7 @@ function _expr(o) {
 RelaxNode.prototype.cnEquals = function(r) {
     return new RelaxNode(
         'Math.abs(' + this.expr + ' - (' + _expr(r) + '))',
-        this.vars.concat(r.vars).uniq(),
+        _.uniq(this.vars.concat(r.vars)),
         this.solver
     );
 };
@@ -291,7 +259,7 @@ RelaxNode.prototype.cnGeq = function(r) {
     return new RelaxNode(
         '((' + this.expr + ' >= ' + _expr(r) +
             ') ? 0 : Math.abs(' + this.expr + ' - (' + _expr(r) + ')))',
-        this.vars.concat(r.vars).uniq(),
+        _.uniq(this.vars.concat(r.vars)),
         this.solver
     );
 };
@@ -300,7 +268,7 @@ RelaxNode.prototype.cnLeq = function(r) {
     return new RelaxNode(
         '((' + this.expr + ' <= ' + _expr(r) +
             ') ? 0 : Math.abs(' + this.expr + ' - (' + _expr(r) + ')))',
-        this.vars.concat(r.vars).uniq(),
+        _.uniq(this.vars.concat(r.vars)),
         this.solver
     );
 };
@@ -310,7 +278,7 @@ RelaxNode.prototype.cnLess = function(r) {
         '((' + this.expr + ' < ' + _expr(r) + ') ? 0 : ((' +
             this.expr + ' + (' + _expr(r) +
             ' * ' + this.solver.epsilon + ')) - (' + _expr(r) + ')))',
-        this.vars.concat(r.vars).uniq(),
+        _.uniq(this.vars.concat(r.vars)),
         this.solver
     );
 };
@@ -320,7 +288,7 @@ RelaxNode.prototype.cnGreater = function(r) {
         '((' + this.expr + ' > ' + _expr(r) + ') ? 0 : ((' +
             _expr(r) + ' + (' + _expr(r) +
             ' * ' + this.solver.epsilon + ')) - (' + this.expr + ')))',
-        this.vars.concat(r.vars).uniq(),
+        _.uniq(this.vars.concat(r.vars)),
         this.solver
     );
 };
@@ -331,7 +299,7 @@ RelaxNode.prototype.cnNeq = function(r) {
             ') > ' + this.solver.epsilon + ') ' + '? 0 : Math.abs((' + _expr(r) +
             ' + (' + _expr(r) + ' * ' + this.solver.epsilon +
             ')) - (' + this.expr + ')))',
-        this.vars.concat(r.vars).uniq(),
+        _.uniq(this.vars.concat(r.vars)),
         this.solver
     );
 };
@@ -341,7 +309,7 @@ RelaxNode.prototype.cnNotIdentical = RelaxNode.prototype.cnNeq;
 RelaxNode.prototype.plus = function(r) {
     return new RelaxNode(
         '(' + this.expr + ' + ' + _expr(r) + ')',
-        this.vars.concat(r.vars).uniq(),
+        _.uniq(this.vars.concat(r.vars)),
         this.solver
     );
 };
@@ -349,7 +317,7 @@ RelaxNode.prototype.plus = function(r) {
 RelaxNode.prototype.minus = function(r) {
     return new RelaxNode(
         '(' + this.expr + ' - ' + _expr(r) + ')',
-        this.vars.concat(r.vars).uniq(),
+        _.uniq(this.vars.concat(r.vars)),
         this.solver
     );
 };
@@ -357,7 +325,7 @@ RelaxNode.prototype.minus = function(r) {
 RelaxNode.prototype.times = function(r) {
     return new RelaxNode(
         '(' + this.expr + ' * ' + _expr(r) + ')',
-        this.vars.concat(r.vars).uniq(),
+        _.uniq(this.vars.concat(r.vars)),
         this.solver
     );
 };
@@ -365,7 +333,7 @@ RelaxNode.prototype.times = function(r) {
 RelaxNode.prototype.divide = function(r) {
     return new RelaxNode(
         '(' + this.expr + ' / ' + _expr(r) + ')',
-        this.vars.concat(r.vars).uniq(),
+        _.uniq(this.vars.concat(r.vars)),
         this.solver
     );
 };
@@ -373,7 +341,7 @@ RelaxNode.prototype.divide = function(r) {
 RelaxNode.prototype.modulo = function(r) {
     return new RelaxNode(
         '(' + this.expr + ' % ' + _expr(r) + ')',
-        this.vars.concat(r.vars).uniq(),
+        _.uniq(this.vars.concat(r.vars)),
         this.solver
     );
 };
